@@ -1,9 +1,8 @@
 import re
-import tempfile
-from tokenizer import Tokenizer
+from resources.tokenizer import Tokenizer
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
-from database import token_table
+from resources.database import db
 
 scanner = Tokenizer()
 
@@ -34,29 +33,23 @@ def extract_next_links(url: str, resp):
         # get the links 
         links = [x["href"] for x in soup.find_all("a", href=True)]
 
+        # parse the text with a Tokenizer 
+        text = soup.get_text()
 
-        # create a temporary file to write the text into so that I can slowly load the file back into memory
-        with tempfile.NamedTemporaryFile(delete_on_close=False, mode="w+", encoding="utf-8") as temp_file:
-            
-            # parse the text with a Tokenizer 
-            text = soup.get_text()
+        tokenFrequenciesDict = scanner.compute_word_frequencies([x for x in scanner.get_token(text)])
 
-            temp_file.write(text)
+        storedTokens = db.tokens.insert(tokenFrequenciesDict, url, db.conn)
 
-            temp_file.flush()
-
-            del text 
-
-            tokenFrequenciesDict = scanner.compute_word_frequencies([x for x in scanner.tokenize(temp_file.name)])
-
-            storedTokens = token_table.insert(tokenFrequenciesDict, url)
-            if not storedTokens:
-                print(f"Failed to store tokens for url: {url}")
-            del tokenFrequenciesDict
+        if not storedTokens:
+            print(f"Failed to store tokens for url: {url}")
+        
+        del tokenFrequenciesDict
+        del text 
 
         return links 
     except Exception as e:
         print(f"\n Something went wrong with the extracting links should as {e} \n")
+        print(f"\n What caused the error {url}")
         return [] # may want to do something else to handle the errors 
 
 def is_valid(url):
@@ -65,9 +58,19 @@ def is_valid(url):
     # There are already some conditions that return False.
     try:
         urlFlag = False
-        extensionFlag = False
         parsed = urlparse(url)
         if parsed.scheme not in set(["http", "https"]):
+            return False
+        
+        if re.match(
+        r".*\.(css|js|bmp|gif|jpe?g|ico"
+        + r"|png|tiff?|mid|mp2|mp3|mp4"
+        + r"|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf"
+        + r"|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names"
+        + r"|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso"
+        + r"|epub|dll|cnf|tgz|sha1"
+        + r"|thmx|mso|arff|rtf|jar|csv"
+        + r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower()):
             return False
         
         niche_domain_pattern = r"^.*(stat|ics|informatics|cs)\.uci\.edu$"  # any character or zero characters before it (.*), first capture group of ors (|), and must end in uci.edu ($)
@@ -81,19 +84,14 @@ def is_valid(url):
         if parsed.hostname == "today.uci.edu" and re.match(niche_path_pattern, parsed.path): # doesn't work if www. is in front 
             urlFlag = True
 
-        if not re.match(
-        r".*\.(css|js|bmp|gif|jpe?g|ico"
-        + r"|png|tiff?|mid|mp2|mp3|mp4"
-        + r"|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf"
-        + r"|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names"
-        + r"|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso"
-        + r"|epub|dll|cnf|tgz|sha1"
-        + r"|thmx|mso|arff|rtf|jar|csv"
-        + r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower()):
-            extensionFlag = True
-        return urlFlag and extensionFlag
+        if not urlFlag:
+            return False 
+        
+        # insert into the database 
+        inserted = db.urls.insert(url ,parsed.hostname, parsed.hostname + parsed.path + parsed.params + parsed.query, db.conn)
+
+        return inserted
 
     except TypeError:
         print ("TypeError for ", parsed)
         raise
-

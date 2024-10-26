@@ -30,16 +30,15 @@ class Tokenizer:
         Time complexity is O(n) as I have a single loop going through n lines of a file
         """
         word = ""
+        line = line.lower()
         for c in line:
             if c in alphabet or c in numerical:
                 word += c
             else:
                 if len(word):
-                    print(word)
                     yield word
                     word = ""
         if len(word):
-            print(word)
             yield word
   
 
@@ -93,7 +92,6 @@ def main():
     s = Tokenizer()
 
     s.print_frequencies(s.compute_word_frequencies(s.tokenize(infile)))
-
 
 if __name__ == "__main__":
     main()

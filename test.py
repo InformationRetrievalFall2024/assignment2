@@ -92,7 +92,7 @@ class TestAssignment2(unittest.TestCase):
             self.assertEqual(expected_links[test_number], actual_links, "Are the links matching to the expected outcome?")
             test_number += 1 
 
-    def test_from_csv(self):
+    def test_is_valid_from_csv(self):
         with open('tests/test_cases/dumby_urls.csv', newline='') as csvfile:
             reader = csv.reader(csvfile)
             for row in reader:

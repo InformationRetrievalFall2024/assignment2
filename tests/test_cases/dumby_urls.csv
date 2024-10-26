@@ -9,3 +9,7 @@ https://other.uci.edu,false
 http://today.uci.edu/department/other_department/,false
 http://ics.uci.edu/file.pdf,false
 https://stat.uci.edu/image.jpg,false
+http://today.uci.edu/department/information_computer_sciences/news#section,false
+http://stat.uci.edu/page?query=1#section,true
+http://stat.uci.edu/page?query=1,false
+http://stat.uci.edu/page#section,true
