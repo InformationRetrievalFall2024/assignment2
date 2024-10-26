@@ -1,0 +1,11 @@
+http://vision.uci.edu/kitty,false
+http://subdomain.ics.uci.edu/page.html,true
+https://research.cs.uci.edu/index.php,true
+http://informatics.uci.edu/about,true
+https://www.stat.uci.edu/data,true
+http://today.uci.edu/department/information_computer_sciences/news,true
+http://www.example.com,false
+https://other.uci.edu,false
+http://today.uci.edu/department/other_department/,false
+http://ics.uci.edu/file.pdf,false
+https://stat.uci.edu/image.jpg,false
