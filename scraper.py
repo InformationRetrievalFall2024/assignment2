@@ -2,15 +2,14 @@ import re
 from resources.tokenizer import Tokenizer
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
-from resources.database import db
 
 scanner = Tokenizer()
 
-def scraper(url, resp):
-    links = extract_next_links(url, resp)
-    return [link for link in links if is_valid(link)]
+def scraper(url, resp, db):
+    links = extract_next_links(url, resp, db)
+    return [link for link in links if is_valid(link, db)]
 
-def extract_next_links(url: str, resp):
+def extract_next_links(url: str, resp, db):
     
     # Implementation required.
     # url: the URL that was used to get the page
@@ -29,7 +28,26 @@ def extract_next_links(url: str, resp):
     # Parse while nt having an error 
     try:
         soup = BeautifulSoup(resp.raw_response.content, 'lxml')
+        # need to scan for this <meta name="robots" content="noindex,nofollow"> to avoid scanning places I should be 
+        meta_tag = soup.find("meta", attrs={'name': 'robots', 'content': 'noindex,nofollow'})
 
+        if meta_tag:
+            return []
+        
+        infinite_scroll = soup.find("button", text="Load more")
+        if infinite_scroll:
+            return []
+        
+        pagination_links = soup.find("a", class_="pagination")
+        if pagination_links:
+            links = soup.find_all("a", class_="pagination")
+            if len(pagination_links) > 100:
+                return []
+
+        calendar = soup.find(class_=re.compile(r'\bcalendar\b', re.IGNORECASE))
+        if calendar:
+            return []
+        
         # get the links 
         links = [x["href"] for x in soup.find_all("a", href=True)]
 
@@ -52,7 +70,7 @@ def extract_next_links(url: str, resp):
         print(f"\n What caused the error {url}")
         return [] # may want to do something else to handle the errors 
 
-def is_valid(url):
+def is_valid(url, db):
     # Decide whether to crawl this url or not. 
     # If you decide to crawl it, return True; otherwise return False.
     # There are already some conditions that return False.
