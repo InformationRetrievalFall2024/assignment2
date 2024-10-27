@@ -24,6 +24,7 @@ def is_valid(url):
     try:
         parsed = urlparse(url)
         if parsed.scheme not in set(["http", "https"]):
+            #EMELY: DESCRIPTION 
             return False
         return not re.match(
             r".*\.(css|js|bmp|gif|jpe?g|ico"
