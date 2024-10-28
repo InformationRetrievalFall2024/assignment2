@@ -1,16 +1,15 @@
 import re
-from resources.tokenizer import Tokenizer
-from urllib.parse import urlparse
-from bs4 import BeautifulSoup
+from urllib.parse import urlparse, urlunparse
+from resources.PickleManager import PickleManager
+from resources.Tokenizer import Tokenizer
+from bs4 import BeautifulSoup 
+import lxml 
 
-scanner = Tokenizer()
+def scraper(url, resp, token_manager: PickleManager, subdomain_manager: PickleManager, unique_urls_manager: PickleManager):
+    links = extract_next_links(url, resp, token_manager)
+    return [link for link in links if is_valid(link, subdomain_manager, unique_urls_manager)]
 
-def scraper(url, resp, db):
-    links = extract_next_links(url, resp, db)
-    return [link for link in links if is_valid(link, db)]
-
-def extract_next_links(url: str, resp, db):
-    
+def extract_next_links(url, resp, token_manager: PickleManager):
     # Implementation required.
     # url: the URL that was used to get the page
     # resp.url: the actual url of the page
@@ -19,76 +18,75 @@ def extract_next_links(url: str, resp, db):
     # resp.raw_response: this is where the page actually is. More specifically, the raw_response has two parts:
     #         resp.raw_response.url: the url, again
     #         resp.raw_response.content: the content of the page!
-    
-    # Check if response status is 200 
-    if resp.status != 200:
-        print("Response status code is not equivalent to 200!")
-        return []# may want to do something else to handle errors 
-    
-    # Parse while nt having an error 
-    try:
-        soup = BeautifulSoup(resp.raw_response.content, 'lxml')
-        # need to scan for this <meta name="robots" content="noindex,nofollow"> to avoid scanning places I should be 
-        meta_tag = soup.find("meta", attrs={'name': 'robots', 'content': 'noindex,nofollow'})
+    # Return a list with the hyperlinks (as strings) scrapped from resp.raw_response.content
 
+    # check if the response status is 200
+    if resp.status != 200:
+        return list()
+    
+    try: 
+        # create the soup
+        parsed_content = BeautifulSoup(resp.raw_response.content, 'lxml')
+
+        # check to see if there is a meta tag with no index
+        meta_tag = parsed_content.find("meta", attrs={'name': 'robots', 'content': 'noindex,nofollow'})
         if meta_tag:
             return []
         
-        infinite_scroll = soup.find("button", text="Load more")
-        if infinite_scroll:
-            return []
-        
-        pagination_links = soup.find("a", class_="pagination")
-        if pagination_links:
-            links = soup.find_all("a", class_="pagination")
-            if len(pagination_links) > 100:
-                return []
-
-        calendar = soup.find(class_=re.compile(r'\bcalendar\b', re.IGNORECASE))
+        #check if you have calendar elements (may be overkill)
+        calendar = parsed_content.find(class_=re.compile(r'\bcalendar\b', re.IGNORECASE))
         if calendar:
             return []
+
+        parsed_content_text = parsed_content.get_text()
+
+        # extract tokens while updating the previous dictionary
+        s = Tokenizer()
         
-        # get the links 
-        links = [x["href"] for x in soup.find_all("a", href=True)]
-
-        # parse the text with a Tokenizer 
-        text = soup.get_text()
-
-        tokenFrequenciesDict = scanner.compute_word_frequencies([x for x in scanner.get_token(text)])
-
-        storedTokens = db.tokens.insert(tokenFrequenciesDict, url, db.conn)
-
-        if not storedTokens:
-            print(f"Failed to store tokens for url: {url}")
         
-        del tokenFrequenciesDict
-        del text 
+        token_dictionary = token_manager.unpickle_tokens()
+        for token in s.get_token(parsed_content_text):
+            try:
+                token_dictionary[token] = token_dictionary[token] + 1 
+            except KeyError:
+                token_dictionary[token] = 1
+ 
+        del parsed_content_text
 
-        return links 
+        # unpickle the previous token dictionary and update it using the new dictionary
+        token_manager.pickle_tokens(token_dictionary)
+
+        del token_dictionary
+        # extract all links on the page
+        return [x["href"] for x in parsed_content.find_all("a", href=True)]
+
+        
+
+
     except Exception as e:
-        print(f"\n Something went wrong with the extracting links should as {e} \n")
-        print(f"\n What caused the error {url}")
-        return [] # may want to do something else to handle the errors 
+        print(f"An error has occured here. {e}")
+        pass 
+    
+    return list()
 
-def is_valid(url, db):
+def is_valid(url, subdomain_manager: PickleManager, unique_urls_manager: PickleManager):
     # Decide whether to crawl this url or not. 
     # If you decide to crawl it, return True; otherwise return False.
     # There are already some conditions that return False.
     try:
-        urlFlag = False
+        url_matched = False 
         parsed = urlparse(url)
         if parsed.scheme not in set(["http", "https"]):
             return False
-        
         if re.match(
-        r".*\.(css|js|bmp|gif|jpe?g|ico"
-        + r"|png|tiff?|mid|mp2|mp3|mp4"
-        + r"|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf"
-        + r"|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names"
-        + r"|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso"
-        + r"|epub|dll|cnf|tgz|sha1"
-        + r"|thmx|mso|arff|rtf|jar|csv"
-        + r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower()):
+            r".*\.(css|js|bmp|gif|jpe?g|ico"
+            + r"|png|tiff?|mid|mp2|mp3|mp4"
+            + r"|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf"
+            + r"|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names"
+            + r"|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso"
+            + r"|epub|dll|cnf|tgz|sha1"
+            + r"|thmx|mso|arff|rtf|jar|csv"
+            + r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower()):
             return False
         
         niche_domain_pattern = r"^.*(stat|ics|informatics|cs)\.uci\.edu$"  # any character or zero characters before it (.*), first capture group of ors (|), and must end in uci.edu ($)
@@ -97,18 +95,40 @@ def is_valid(url, db):
         
         
         if re.match(niche_domain_pattern, parsed.hostname):  
-            urlFlag = True 
+            url_matched = True 
         
         if parsed.hostname == "today.uci.edu" and re.match(niche_path_pattern, parsed.path): # doesn't work if www. is in front 
-            urlFlag = True
+            url_matched = True
 
-        if not urlFlag:
+        if not url_matched:
             return False 
         
-        # insert into the database 
-        inserted = db.urls.insert(url ,parsed.hostname, parsed.hostname + parsed.path + parsed.params + parsed.query, db.conn)
+        # store url with fragment in unique set if not in there else return
+        unique_urls_set = unique_urls_manager.unpickle_tokens()
+        defragged_url = urlunparse(parsed._replace(fragment=''))
+        if defragged_url in unique_urls_set:
+            return False 
+        
+        unique_urls_set.add(defragged_url)
+        print(unique_urls_set)
+        unique_urls_manager.pickle_tokens(unique_urls_set)
+        del unique_urls_set
 
-        return inserted
+        # store a count with subdomains being the key and count being the value
+
+        mapped_subdomains: dict[str: int] = subdomain_manager.unpickle_tokens()
+        previous_value = 0
+
+        try:
+            previous_value = mapped_subdomains[parsed.hostname]
+        except KeyError:
+            pass 
+
+        mapped_subdomains[parsed.hostname] = previous_value + 1
+        subdomain_manager.pickle_tokens(mapped_subdomains)
+        del mapped_subdomains
+
+        return True
 
     except TypeError:
         print ("TypeError for ", parsed)

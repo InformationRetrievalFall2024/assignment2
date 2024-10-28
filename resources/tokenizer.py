@@ -1,10 +1,10 @@
 import sys
 
 
-alphabet = {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"}
-numerical = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}
-
 class Tokenizer:
+
+    _Alphabet = {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"}  
+    _Numerical = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}
 
     def yield_line_from_file(self, text_file_path: str) -> str:
         """
@@ -32,7 +32,7 @@ class Tokenizer:
         word = ""
         line = line.lower()
         for c in line:
-            if c in alphabet or c in numerical:
+            if c in self._Alphabet or c in self._Numerical:
                 word += c
             else:
                 if len(word):
