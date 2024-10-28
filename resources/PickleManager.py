@@ -29,8 +29,3 @@ class PickleManager:
                 return pickle.load(infile)
         except Exception as e:
             raise RuntimeError(f"Tokens were unable to be loaded from {self._file_path}.") from e
-
-
-token_manager = PickleManager("scraped/tokens.pickle", "dict")
-subdomain_manager = PickleManager("scraped/subdomain.pickle", "dict")
-unique_urls_manager = PickleManager("scraped/unique_urls.pickle", "set")

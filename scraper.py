@@ -5,7 +5,11 @@ from resources.Tokenizer import Tokenizer
 from bs4 import BeautifulSoup 
 import lxml 
 
-def scraper(url, resp, token_manager: PickleManager, subdomain_manager: PickleManager, unique_urls_manager: PickleManager):
+token_manager = PickleManager("scraped/tokens.pickle", "dict")
+subdomain_manager = PickleManager("scraped/subdomain.pickle", "dict")
+unique_urls_manager = PickleManager("scraped/unique_urls.pickle", "set")
+
+def scraper(url, resp):
     links = extract_next_links(url, resp, token_manager)
     return [link for link in links if is_valid(link, subdomain_manager, unique_urls_manager)]
 

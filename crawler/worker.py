@@ -5,7 +5,6 @@ from utils.download import download
 from utils import get_logger
 import scraper
 import time
-from resources.PickleManager import token_manager, subdomain_manager, unique_urls_manager
 
 class Worker(Thread):
     def __init__(self, worker_id, config, frontier):
@@ -27,7 +26,7 @@ class Worker(Thread):
             self.logger.info(
                 f"Downloaded {tbd_url}, status <{resp.status}>, "
                 f"using cache {self.config.cache_server}.")
-            scraped_urls = scraper.scraper(tbd_url, resp, token_manager, subdomain_manager, unique_urls_manager)
+            scraped_urls = scraper.scraper(tbd_url, resp)
             for scraped_url in scraped_urls:
                 self.frontier.add_url(scraped_url)
             self.frontier.mark_url_complete(tbd_url)
