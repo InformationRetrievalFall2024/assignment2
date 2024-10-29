@@ -5,8 +5,7 @@ import csv
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from scraper import extract_next_links
-from resources.PickleManager import token_manager
-from resources.Tokenizer import Tokenizer
+from resources.helpers import store_obj, max_url_tokens, retrieve_obj
 
 class Raw: 
 
@@ -88,11 +87,12 @@ class TestExtractNextLinks(unittest.TestCase):
         expected_links = [["http://example.com/page1", "http://example.com/page2"], ["http://example.com/page3", "http://example.com/page4"], ["http://example.com/page5", "http://example.com/page6"], []]
         responses = [self.response_success_1, self.response_success_2, self.response_success_3, self.response_fail]
         while (0 <= test_number <= 3):
-            actual_links = extract_next_links(responses[test_number].url, responses[test_number], token_manager)
+            actual_links = extract_next_links(responses[test_number].url, responses[test_number])
             if len(actual_links):
                 self.assertTrue(actual_links, "Did it insert into the database?")
             self.assertEqual(expected_links[test_number], actual_links, "Are the links matching to the expected outcome?")
             test_number += 1 
+        self.assertTupleEqual((max_url_tokens.url, max_url_tokens.token_count),("http://home.example.com/about", 15))
         
         
 if __name__ == '__main__':

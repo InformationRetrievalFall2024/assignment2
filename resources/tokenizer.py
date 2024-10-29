@@ -1,10 +1,10 @@
 import sys
 
 
-class Tokenizer:
+alphabet = {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"}
+numerical = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}
 
-    _Alphabet = {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"}  
-    _Numerical = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}
+class Tokenizer:
 
     def yield_line_from_file(self, text_file_path: str) -> str:
         """
@@ -30,9 +30,8 @@ class Tokenizer:
         Time complexity is O(n) as I have a single loop going through n lines of a file
         """
         word = ""
-        line = line.lower()
         for c in line:
-            if c in self._Alphabet or c in self._Numerical:
+            if c in alphabet or c in numerical:
                 word += c
             else:
                 if len(word):
@@ -80,6 +79,28 @@ class Tokenizer:
                 for k, v in mappedFrequencies.items():
                     outfile.write(f"{k:<50}\t{v}\n")
 
+    def print_frequencies_limited(self, mappedFrequencies: dict[str: int], limit: int) -> None:
+        """
+        Using the sorted python function, the time complexity is O(n+ log n) nested within a loop making this operation O(n2)
+        Step 1: Sort the dictionary items in desc order then add them to a dictionary 
+        Step 2: Iterate through the items, print the words out
+        """
+        output_to_file = False 
+        output_file_path = "results.txt"
+        mappedFrequencies = {k: v for k, v in sorted(mappedFrequencies.items(), key=lambda item: item[1], reverse=True)}  # code from https://www.geeksforgeeks.org/python-sort-python-dictionaries-by-key-or-value/
+
+        count = 0
+        for k, v in mappedFrequencies.items():
+            if limit < count:
+                return  
+            print(f"{k:<50}\t{v}")
+            count += 1
+
+        if output_to_file:
+            with open(output_file_path, 'w') as outfile:
+                for k, v in mappedFrequencies.items():
+                    outfile.write(f"{k:<50}\t{v}\n")
+
 
 def main():
     """ The most computational function is tokenize which is O(n2) making this call O(n2) """
@@ -92,6 +113,7 @@ def main():
     s = Tokenizer()
 
     s.print_frequencies(s.compute_word_frequencies(s.tokenize(infile)))
+
 
 if __name__ == "__main__":
     main()
