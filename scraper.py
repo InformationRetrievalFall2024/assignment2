@@ -1,7 +1,7 @@
 import re
 from urllib.parse import urlparse, urlunparse, parse_qs
 from resources.helpers import retrieve_obj, store_obj, max_url_tokens, delete_pickle_files, bad_urls
-from resources.Tokenizer import Tokenizer
+from resources.tokenizer import Tokenizer
 from bs4 import BeautifulSoup 
 import lxml 
 
@@ -29,6 +29,34 @@ def extract_next_links(url, resp):
         if resp.status in [600, 608, 607]:
             bad_urls.store_bad_urls(url)
         return list()
+
+    # check for "?filter%" in the url to prevent infinite loops with filters
+    if '?filter%' in resp.url:
+        bad_urls.store_bad_urls(url)
+        return []
+        
+    # check for "#comment-" in the url to prevent comment section loops
+    if '#comment-' in resp.url:
+        bad_urls.store_bad_urls(url)
+        return []
+
+    # check for "#respond" in the url to prevent respond section loops
+    if '#respond' in resp.url:
+        bad_urls.store_bad_urls(url)
+        return []
+    
+    # check for these in the url; they break the crawl
+    if '~aalshayb' in resp.url:
+        bad_urls.store_bad_urls(url)
+        return []
+    
+    if "20-icde-crypto_encryption_secret-sharing_sgx_tutorial.ppsx" in resp.url:
+        bad_urls.store_bad_urls(url)
+        return []
+
+    if 'https://grape.ics.uci.edu/wiki/public/wiki/cs122b' in resp.url:
+        bad_urls.store_bad_urls(url)
+        return []
 
     try: 
         # create the soup

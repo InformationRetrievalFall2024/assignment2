@@ -1,5 +1,5 @@
 from resources.helpers import store_obj, retrieve_obj, max_url_tokens, bad_urls
-from resources.Tokenizer import Tokenizer
+from resources.tokenizer import Tokenizer
 # import tests.populate_pickle_files # only uncomment for testing purposes
 """
 As a concrete deliverable of this project, besides the code itself, you must submit a report containing answers to the following questions:
