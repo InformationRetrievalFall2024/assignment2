@@ -5,7 +5,10 @@ import csv
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from scraper import extract_next_links, is_valid, reset_storage
+from StorageManager import StorageManager
 
+db = StorageManager()
+db.reset_tables()
 class Raw: 
 
     def __init__(self, content: str, url: str):

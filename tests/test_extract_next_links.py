@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from scraper import extract_next_links
 from resources.helpers import store_obj, max_url_tokens, retrieve_obj
-
+from StorageManager import StorageManager
 class Raw: 
 
     def __init__(self, content: str, url: str):
@@ -74,12 +74,12 @@ class TestExtractNextLinks(unittest.TestCase):
 
 
     def setUp(self):
-        # Setup code if needed
-        pass
+        self.db = StorageManager()
+        self.db.reset_tables()
+        self.db.create_tables()
 
     def tearDown(self):
-        # Teardown code if needed
-        pass
+        self.db.close_db()
 
     def test_extract_next_links(self):
         # Test case 1 for some_function
@@ -92,7 +92,8 @@ class TestExtractNextLinks(unittest.TestCase):
                 self.assertTrue(actual_links, "Did it insert into the database?")
             self.assertEqual(expected_links[test_number], actual_links, "Are the links matching to the expected outcome?")
             test_number += 1 
-        self.assertTupleEqual((max_url_tokens.url, max_url_tokens.token_count),("http://home.example.com/about", 15))
+        url, freq = self.db.select_tokens_by_url_with_most_frequencies()
+        self.assertTupleEqual((url, freq),("http://home.example.com/about", 15))
         
         
 if __name__ == '__main__':

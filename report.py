@@ -1,5 +1,4 @@
-from resources.helpers import store_obj, retrieve_obj, max_url_tokens, bad_urls
-from resources.Tokenizer import Tokenizer
+from StorageManager import StorageManager
 # import tests.populate_pickle_files # only uncomment for testing purposes
 """
 As a concrete deliverable of this project, besides the code itself, you must submit a report containing answers to the following questions:
@@ -12,20 +11,25 @@ vision.ics.uci.edu, 10 (not the actual number here)
 
 """
 
-s = Tokenizer()
+def print_frequencies(dictionary: dict[str, int]):
+    for k,v in dictionary:
+        print(f"{k:30}:{v}")
+
+sm = StorageManager()
 # Get length of unique pages by taking the length of unique urls 
 print("\n-----------------------------\n")
 print("Report")
 print("\n-----------------------------\n")
-print(f"Found {len(retrieve_obj(0))} unique pages")
+print(f"Found {sm.select_urls_unqiue_count()} unique pages")
 print("\n-----------------------------\n")
-url, count = retrieve_obj(3)
+url, count = sm.select_tokens_by_url_with_most_frequencies()
 print(f"The page with the most tokens is {url} with a token count of {count}")
 print("\n-----------------------------\n")
 print("Found these subdomains:\t")
-s.print_frequencies(retrieve_obj(1))
+token_dictionary = sm.select_tokens_by_frequencies()
 print("\n-----------------------------\n")
 print("Most common tokens here: ")
-s.print_frequencies_limited(retrieve_obj(2), 50)
+print_frequencies(token_dictionary)
 print("\n-----------------------------\n")
-print(len(retrieve_obj(4)))
+subdomain_dict = sm.select_urls_by_subdomain()
+print_frequencies(subdomain_dict)

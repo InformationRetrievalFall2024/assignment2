@@ -1,8 +1,10 @@
 import re
+from sqlite3 import IntegrityError as sqlite3_IntegrityError
 from urllib.parse import urlparse, urlunparse, parse_qs
 from resources.helpers import retrieve_obj, store_obj, max_url_tokens, delete_pickle_files, bad_urls
 from resources.Tokenizer import Tokenizer
 from bs4 import BeautifulSoup 
+from StorageManager import StorageManager
 import lxml 
 
 def reset_storage():
@@ -13,6 +15,7 @@ def scraper(url, resp):
     return [link for link in links if is_valid(link)]
 
 def extract_next_links(url, resp):
+    db = StorageManager()
     # return []
     # Implementation required.
     # url: the URL that was used to get the page
@@ -23,56 +26,50 @@ def extract_next_links(url, resp):
     #         resp.raw_response.url: the url, again
     #         resp.raw_response.content: the content of the page!
     # Return a list with the hyperlinks (as strings) scrapped from resp.raw_response.content
-
-    # check if the response status is 200
-    if resp.status != 200:
-        if resp.status in [600, 608, 607]:
-            bad_urls.store_bad_urls(url)
-        return list()
-
     try: 
+    # check if the response status is 200
+        if resp.status != 200:
+            if resp.status in [600, 608, 607]:
+                db.insert_bad_url(url)
+            return list()
+
+
         # create the soup
         parsed_content = BeautifulSoup(resp.raw_response.content, 'lxml')
 
         # check to see if there is a meta tag with no index
         meta_tag = parsed_content.find("meta", attrs={'name': 'robots', 'content': 'noindex,nofollow'})
         if meta_tag:
-            bad_urls.store_bad_urls(url)
+            db.insert_bad_url(url)
             return []
 
         # check to see if there is a div with error-content class for dead pages hopefully
         error_div = parsed_content.find("div", class_="error-content")
         if error_div:
-            bad_urls.store_bad_urls(url)
+            db.insert_bad_url(url)
             return []
         
         #check if you have calendar elements (may be overkill)
         calendar = parsed_content.find(class_=re.compile(r'\bcalendar\b', re.IGNORECASE))
         if calendar:
-            bad_urls.store_bad_urls(url)
+            db.insert_bad_url(url)
             return []
 
         parsed_content_text = parsed_content.get_text().lower()
 
         # extract tokens while updating the previous dictionary
         s = Tokenizer()
-        token_count = 0
         
-        token_dictionary = retrieve_obj(2)
+        token_dictionary = dict()
         for token in s.get_token(parsed_content_text):
-            token_count += 1
             try:
                 token_dictionary[token] = token_dictionary[token] + 1 
             except KeyError:
                 token_dictionary[token] = 1
 
-        assert token_count # make sure the we are getting tokens
-
+        db.insert_token(token_dictionary, url)
+        
         del parsed_content_text
-        max_url_tokens.compare_tokens(url, token_count)
-        # unpickle the previous token dictionary and update it using the new dictionary
-        store_obj(token_dictionary, 2)
-
         del token_dictionary
         # extract all links on the page
         return [x["href"] for x in parsed_content.find_all("a", href=True)]
@@ -81,14 +78,18 @@ def extract_next_links(url, resp):
         print(f"Error occured when extracting links. {e}")
         return list()
 
+    finally:
+        db.close_db()
+
 def is_valid(url):
     # return True
     # Decide whether to crawl this url or not. 
     # If you decide to crawl it, return True; otherwise return False.
     # There are already some conditions that return False.
+    db = StorageManager()
     try:
-        bad_urls = retrieve_obj(4)
-        if url in bad_urls:
+        result = db.check_if_bad_url(url)
+        if result:
             return False 
         hostname_matched = False 
         parsed = urlparse(url)
@@ -100,7 +101,7 @@ def is_valid(url):
             if parse_qs(parsed.query).get("action"):
                 return False 
             
-        login_redirect_pattern = r"(login|redirect_to|auth|signin|signup|logout)"
+        login_redirect_pattern = r"(login|redirect_to|auth|signin|signup|logout|filter|calendar)"
         if re.search(login_redirect_pattern, parsed.path, re.IGNORECASE) or re.search(login_redirect_pattern, parsed.query, re.IGNORECASE):
             return False
         
@@ -130,32 +131,16 @@ def is_valid(url):
             return False 
         
         # store url with fragment in unique set if not in there else return
-        unique_urls_set = retrieve_obj(0)
         defragged_url = urlunparse(parsed._replace(fragment=''))
-        if defragged_url in unique_urls_set:
-            return False 
-        
-        unique_urls_set.add(defragged_url)
-
-        store_obj(unique_urls_set, 0)
-        del unique_urls_set
-
-        # store a count with subdomains being the key and count being the value
-
-        mapped_subdomains: dict[str: int] = retrieve_obj(1)
-        previous_value = 0
-
-        try:
-            previous_value = mapped_subdomains[parsed.hostname]
-        except KeyError:
-            pass 
-
-        mapped_subdomains[parsed.hostname] = previous_value + 1
-        store_obj(mapped_subdomains, 1)
-        del mapped_subdomains
-
+        db.insert_url(parsed.hostname, defragged_url, url)
         return True
 
+    except sqlite3_IntegrityError:
+        # inserting into the database didn't work as url or subdomain is not unique
+        return False
     except TypeError:
         print ("TypeError for ", parsed)
-        raise
+        return False 
+    
+    finally:
+        db.close_db()
