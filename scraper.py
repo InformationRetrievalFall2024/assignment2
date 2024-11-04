@@ -1,11 +1,14 @@
 import re
 from sqlite3 import IntegrityError as sqlite3_IntegrityError
 from urllib.parse import urlparse, urlunparse, parse_qs
-from resources.helpers import retrieve_obj, store_obj, max_url_tokens, delete_pickle_files, bad_urls
 from resources.Tokenizer import Tokenizer
 from bs4 import BeautifulSoup 
 from StorageManager import StorageManager
 import lxml 
+
+class Reject:
+
+    login_redirect_pattern = re.complie(r"(login|redirect_to|auth|signin|signup|logout|filter|calendar|comment|github|respond|aalshayb|ppsx|json|pdf|commit)")
 
 def reset_storage():
     delete_pickle_files()
@@ -96,13 +99,10 @@ def is_valid(url):
 
         if parsed.scheme not in set(["http", "https"]):
             return False
+
+        url_search_string = parsed.path + parsed.query + parsed.params + parsed.fragment
         
-        if parsed.query: # stops from clicking log in button
-            if parse_qs(parsed.query).get("action"):
-                return False 
-            
-        login_redirect_pattern = r"(login|redirect_to|auth|signin|signup|logout|filter|calendar)"
-        if re.search(login_redirect_pattern, parsed.path, re.IGNORECASE) or re.search(login_redirect_pattern, parsed.query, re.IGNORECASE):
+        if re.search(Reject.login_redirect_pattern, url_search_string, re.IGNORECASE):
             return False
         
         if re.match(
@@ -141,6 +141,9 @@ def is_valid(url):
     except TypeError:
         print ("TypeError for ", parsed)
         return False 
+    except Exception as e:
+        print("URL wasn't parsed right", e)
+        return False
     
     finally:
         db.close_db()
