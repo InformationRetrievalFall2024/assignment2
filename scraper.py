@@ -1,17 +1,14 @@
 import re
 from sqlite3 import IntegrityError as sqlite3_IntegrityError
 from urllib.parse import urlparse, urlunparse, parse_qs
-from resources.Tokenizer import Tokenizer
+from resources.tokenizer import Tokenizer
 from bs4 import BeautifulSoup 
 from StorageManager import StorageManager
 import lxml 
 
 class Reject:
 
-    login_redirect_pattern = re.complie(r"(login|redirect_to|auth|signin|signup|logout|filter|calendar|comment|github|respond|aalshayb|ppsx|json|pdf|commit)")
-
-def reset_storage():
-    delete_pickle_files()
+    login_redirect_pattern = re.compile(r"(login|redirect_to|auth|signin|signup|logout|filter|calendar|comment|github|respond|aalshayb|ppsx|json|pdf|commit)", re.IGNORECASE)
 
 def scraper(url, resp):
     links = extract_next_links(url, resp)
@@ -102,7 +99,7 @@ def is_valid(url):
 
         url_search_string = parsed.path + parsed.query + parsed.params + parsed.fragment
         
-        if re.search(Reject.login_redirect_pattern, url_search_string, re.IGNORECASE):
+        if re.search(Reject.login_redirect_pattern, url_search_string):
             return False
         
         if re.match(
@@ -139,7 +136,6 @@ def is_valid(url):
         # inserting into the database didn't work as url or subdomain is not unique
         return False
     except TypeError:
-        print ("TypeError for ", parsed)
         return False 
     except Exception as e:
         print("URL wasn't parsed right", e)

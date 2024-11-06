@@ -1,5 +1,5 @@
 from StorageManager import StorageManager
-# import tests.populate_pickle_files # only uncomment for testing purposes
+from resources.StopWords import StopWords
 """
 As a concrete deliverable of this project, besides the code itself, you must submit a report containing answers to the following questions:
 
@@ -11,9 +11,21 @@ vision.ics.uci.edu, 10 (not the actual number here)
 
 """
 
-def print_frequencies(dictionary: dict[str, int]):
-    for k,v in dictionary:
+def print_tuple(my_dict: dict[str: int]):
+    for k,v in my_dict:
         print(f"{k:30}:{v}")
+    print("\n")
+
+def print_non_stop_words_top_50(my_tuples: tuple):
+    count = 0
+    for word,freq in my_tuples:
+        if count > 50:
+            break
+        if word in StopWords.collection:
+            continue  
+        print(f"{word:30}:{freq}")
+        count += 1 
+    print("\n")
 
 sm = StorageManager()
 # Get length of unique pages by taking the length of unique urls 
@@ -25,11 +37,10 @@ print("\n-----------------------------\n")
 url, count = sm.select_tokens_by_url_with_most_frequencies()
 print(f"The page with the most tokens is {url} with a token count of {count}")
 print("\n-----------------------------\n")
-print("Found these subdomains:\t")
-token_dictionary = sm.select_tokens_by_frequencies()
-print("\n-----------------------------\n")
 print("Most common tokens here: ")
-print_frequencies(token_dictionary)
+token_dictionary = sm.select_tokens_by_frequencies()
+print_non_stop_words_top_50(token_dictionary)
 print("\n-----------------------------\n")
+print("Found these subdomains:\t")
 subdomain_dict = sm.select_urls_by_subdomain()
-print_frequencies(subdomain_dict)
+print_tuple(subdomain_dict)

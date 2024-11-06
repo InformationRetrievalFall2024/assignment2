@@ -2,7 +2,12 @@ import sqlite3
 from typing import Optional
 
 class StorageManager:
-    def __init__(self, db_name='storage_manager_ics.db'):
+    def __init__(self, db_name='storage_manager_first_run.db'):
+        """ 
+        Best run storage_manager_first_run.db
+        Second best run storage_manager_ics.db
+        Last run storage_manager.db
+        """
         self.conn = sqlite3.connect(db_name)
         self.create_tables()
 

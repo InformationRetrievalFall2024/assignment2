@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from scraper import is_valid
 from resources.helpers import retrieve_obj, store_obj, delete_pickle_files
-from resources.Tokenizer import Tokenizer
+from resources.tokenizer import Tokenizer
 from StorageManager import StorageManager
 class TestIsValid(unittest.TestCase):
 
